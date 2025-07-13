@@ -1,0 +1,654 @@
+{% extends "base.html" %}
+
+{% block title %}文件列表 - 文件管理系统{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0">
+            <i class="bi bi-files"></i> 我的文件
+        </h2>
+        <p class="text-muted mb-0">管理您上传的所有文件</p>
+    </div>
+    <div>
+        <a href="{{ url_for('files.upload') }}" class="btn btn-primary">
+            <i class="bi bi-cloud-upload"></i> 上传文件
+        </a>
+    </div>
+</div>
+
+<!-- 搜索和筛选 -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('files.list') }}" class="row g-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" class="form-control" name="search" 
+                           value="{{ search }}" placeholder="搜索文件名、项目号、设备名称...">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <select class="form-select" name="category">
+                    <option value="">所有类型</option>
+                    <option value="file" {% if category == 'file' %}selected{% endif %}>📄 文件</option>
+                    <option value="image" {% if category == 'image' %}selected{% endif %}>🖼️ 图片</option>
+                    <option value="video" {% if category == 'video' %}selected{% endif %}>🎥 视频</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-funnel"></i> 筛选
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 文件统计 -->
+{% if files.items %}
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 bg-primary text-white">
+            <div class="card-body text-center">
+                <h4 class="mb-0">{{ files.total }}</h4>
+                <small>总文件数</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 bg-success text-white">
+            <div class="card-body text-center">
+                <h4 class="mb-0">{{ files.items | selectattr('category', 'equalto', 'image') | list | length }}</h4>
+                <small>图片文件</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 bg-danger text-white">
+            <div class="card-body text-center">
+                <h4 class="mb-0">{{ files.items | selectattr('category', 'equalto', 'video') | list | length }}</h4>
+                <small>视频文件</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 bg-info text-white">
+            <div class="card-body text-center">
+                <h4 class="mb-0">{{ files.items | selectattr('category', 'equalto', 'file') | list | length }}</h4>
+                <small>文档文件</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 文件列表 -->
+{% if files.items %}
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white">
+        <h6 class="mb-0">
+            <i class="bi bi-list"></i> 文件列表
+            <span class="badge bg-primary ms-2">{{ files.total }} 个文件</span>
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 5%;">类型</th>
+                        <th style="width: 25%;">文件名</th>
+                        <th style="width: 15%;">项目信息</th>
+                        <th style="width: 15%;">设备信息</th>
+                        <th style="width: 10%;">大小</th>
+                        <th style="width: 10%;">安全等级</th>
+                        <th style="width: 12%;">上传时间</th>
+                        <th style="width: 8%;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for file in files.items %}
+                    <tr>
+                        <td>
+                            {% if file.category == 'file' %}
+                                <i class="bi bi-file-earmark-text text-primary" title="文件"></i>
+                            {% elif file.category == 'image' %}
+                                <i class="bi bi-image text-success" title="图片"></i>
+                            {% elif file.category == 'video' %}
+                                <i class="bi bi-camera-video text-danger" title="视频"></i>
+                            {% else %}
+                                <i class="bi bi-file-earmark text-secondary" title="未知"></i>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div>
+                                <strong>{{ file.original_filename }}</strong>
+                                <br>
+                                <small class="text-muted">
+                                    保存为：{{ file.filename }}
+                                    {% if file.category == 'image' and file.image_number %}
+                                        <br>编号：{{ file.image_number }}
+                                    {% elif file.category == 'video' and file.video_number %}
+                                        <br>编号：{{ file.video_number }}
+                                    {% elif file.file_type %}
+                                        <br>类型：{{ file.file_type.upper() }}
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </td>
+                        <td>
+                            {% if file.project_number %}
+                                <div class="small">
+                                    <strong>{{ file.project_number }}</strong>
+                                    {% if file.product_type %}
+                                        <br><span class="text-muted">{{ file.product_type }}</span>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if file.device_name %}
+                                <div class="small">
+                                    <strong>{{ file.device_name }}</strong>
+                                    {% if file.product_material %}
+                                        <br><span class="text-muted">{{ file.product_material }}</span>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark">{{ file.format_file_size() }}</span>
+                            {% if file.category == 'image' and file.image_quality %}
+                                <br><small class="text-muted">{{ file.image_quality }}</small>
+                            {% elif file.category == 'video' and file.video_quality %}
+                                <br><small class="text-muted">{{ file.video_quality }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if file.security_level %}
+                                {% set level_colors = {
+                                    'public': 'success',
+                                    'internal': 'info', 
+                                    'confidential': 'warning',
+                                    'secret': 'danger',
+                                    'top_secret': 'dark'
+                                } %}
+                                <span class="badge bg-{{ level_colors.get(file.security_level, 'secondary') }}">
+                                    {{ file.get_security_level_display() }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>{{ file.upload_time.strftime('%Y-%m-%d') }}</small>
+                            <br>
+                            <small class="text-muted">{{ file.upload_time.strftime('%H:%M') }}</small>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{{ url_for('files.download', file_id=file.id) }}" 
+                                   class="btn btn-outline-primary btn-sm" title="下载">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-info btn-sm" 
+                                        onclick="showFileInfo({{ file.id }})" title="详情">
+                                    <i class="bi bi-info-circle"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm" 
+                                        onclick="deleteFile({{ file.id }}, '{{ file.original_filename }}')" title="删除">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 分页 -->
+{% if files.pages > 1 %}
+<nav aria-label="文件列表分页" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if files.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('files.list', page=files.prev_num, search=search, category=category) }}">上一页</a>
+            </li>
+        {% endif %}
+        
+        {% for page_num in files.iter_pages() %}
+            {% if page_num %}
+                {% if page_num != files.page %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('files.list', page=page_num, search=search, category=category) }}">{{ page_num }}</a>
+                    </li>
+                {% else %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_num }}</span>
+                    </li>
+                {% endif %}
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">…</span>
+                </li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if files.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('files.list', page=files.next_num, search=search, category=category) }}">下一页</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<!-- 空状态 -->
+<div class="card border-0 shadow-sm">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-folder2-open" style="font-size: 4rem; color: #6c757d;"></i>
+        <h4 class="mt-3 mb-2">还没有上传任何文件</h4>
+        <p class="text-muted mb-4">开始上传您的第一个文件吧！</p>
+        <a href="{{ url_for('files.upload') }}" class="btn btn-primary">
+            <i class="bi bi-cloud-upload"></i> 立即上传
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- 文件详情模态框 -->
+<div class="modal fade" id="fileInfoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-info-circle-fill text-primary"></i> 文件详情
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="fileInfoLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                    <p class="mt-2">正在加载文件详情...</p>
+                </div>
+                
+                <div id="fileInfoContent" class="d-none">
+                    <!-- 基本信息 -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-file-earmark-text"></i> 基本信息</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="small text-muted d-block">文件类型</label>
+                                    <span id="fileCategory" class="fw-bold"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="small text-muted d-block">文件大小</label>
+                                    <span id="fileSize" class="fw-bold"></span>
+                                </div>
+                                <div class="col-12">
+                                    <label class="small text-muted d-block">原始文件名</label>
+                                    <span id="originalFilename" class="fw-bold"></span>
+                                </div>
+                                <div class="col-12">
+                                    <label class="small text-muted d-block">系统文件名</label>
+                                    <span id="systemFilename" class="fw-bold"></span>
+                                </div>
+                                <div class="col-12">
+                                    <label class="small text-muted d-block">文件路径</label>
+                                    <span id="filePath" class="fw-bold text-break"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 时间信息 -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-clock-history"></i> 时间信息</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="small text-muted d-block">上传时间</label>
+                                    <span id="uploadTime" class="fw-bold"></span>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="small text-muted d-block">创建时间</label>
+                                    <span id="createTime" class="fw-bold"></span>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="small text-muted d-block">修改时间</label>
+                                    <span id="modifyTime" class="fw-bold"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 属性信息 -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-tags"></i> 属性信息</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="small text-muted d-block">项目编号</label>
+                                    <span id="projectNumber" class="fw-bold"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="small text-muted d-block">设备名称</label>
+                                    <span id="deviceName" class="fw-bold"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="small text-muted d-block">内容语言</label>
+                                    <span id="contentLanguage" class="fw-bold"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="small text-muted d-block">安全等级</label>
+                                    <span id="securityLevel" class="fw-bold"></span>
+                                </div>
+                                <div class="col-12">
+                                    <label class="small text-muted d-block">备注说明</label>
+                                    <span id="remarks" class="fw-bold"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 产品信息（仅图片和视频显示） -->
+                    <div id="productInfoCard" class="card mb-3 d-none">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-box"></i> 产品信息</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="small text-muted d-block">产品类型</label>
+                                    <span id="productType" class="fw-bold"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="small text-muted d-block">产品物料</label>
+                                    <span id="productMaterial" class="fw-bold"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 图片特有属性 -->
+                    <div id="imageInfoCard" class="card mb-3 d-none">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-image"></i> 图片属性</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="small text-muted d-block">图片质量</label>
+                                    <span id="imageQuality" class="fw-bold"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="small text-muted d-block">图片编号</label>
+                                    <span id="imageNumber" class="fw-bold"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 视频特有属性 -->
+                    <div id="videoInfoCard" class="card mb-3 d-none">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-camera-video"></i> 视频属性</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="small text-muted d-block">视频质量</label>
+                                    <span id="videoQuality" class="fw-bold"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="small text-muted d-block">视频编号</label>
+                                    <span id="videoNumber" class="fw-bold"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 文件状态 -->
+                    <div id="fileStatusAlert" class="alert d-none" role="alert">
+                        <!-- 文件状态信息将通过JavaScript动态添加 -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showFileInfo(fileId) {
+    // 显示模态框
+    const modal = new bootstrap.Modal(document.getElementById('fileInfoModal'));
+    modal.show();
+    
+    // 显示加载状态
+    document.getElementById('fileInfoLoading').classList.remove('d-none');
+    document.getElementById('fileInfoContent').classList.add('d-none');
+    
+    // 获取文件详情
+    fetch(`/files/api/file_info/${fileId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            // 隐藏加载状态
+            document.getElementById('fileInfoLoading').classList.add('d-none');
+            document.getElementById('fileInfoContent').classList.remove('d-none');
+            
+            // 更新基本信息
+            document.getElementById('fileCategory').textContent = data.category || '-';
+            document.getElementById('fileSize').textContent = data.file_size || '-';
+            document.getElementById('originalFilename').textContent = data.original_filename || '-';
+            document.getElementById('systemFilename').textContent = data.system_filename || '-';
+            document.getElementById('filePath').textContent = data.file_path || '-';
+            
+            // 更新时间信息
+            document.getElementById('uploadTime').textContent = data.upload_time || '-';
+            document.getElementById('createTime').textContent = data.create_time || '-';
+            document.getElementById('modifyTime').textContent = data.modify_time || '-';
+            
+            // 更新属性信息
+            document.getElementById('projectNumber').textContent = data.project_number || '-';
+            document.getElementById('deviceName').textContent = data.device_name || '-';
+            document.getElementById('contentLanguage').textContent = data.content_language || '-';
+            document.getElementById('securityLevel').textContent = data.security_level || '-';
+            document.getElementById('remarks').textContent = data.remarks || '-';
+            
+            // 处理产品信息（仅图片和视频显示）
+            const productInfoCard = document.getElementById('productInfoCard');
+            if (data.product_type || data.product_material) {
+                productInfoCard.classList.remove('d-none');
+                document.getElementById('productType').textContent = data.product_type || '-';
+                document.getElementById('productMaterial').textContent = data.product_material || '-';
+            } else {
+                productInfoCard.classList.add('d-none');
+            }
+            
+            // 处理图片特有属性
+            const imageInfoCard = document.getElementById('imageInfoCard');
+            if (data.image_quality || data.image_number) {
+                imageInfoCard.classList.remove('d-none');
+                document.getElementById('imageQuality').textContent = data.image_quality || '-';
+                document.getElementById('imageNumber').textContent = data.image_number || '-';
+            } else {
+                imageInfoCard.classList.add('d-none');
+            }
+            
+            // 处理视频特有属性
+            const videoInfoCard = document.getElementById('videoInfoCard');
+            if (data.video_quality || data.video_number) {
+                videoInfoCard.classList.remove('d-none');
+                document.getElementById('videoQuality').textContent = data.video_quality || '-';
+                document.getElementById('videoNumber').textContent = data.video_number || '-';
+            } else {
+                videoInfoCard.classList.add('d-none');
+            }
+            
+            // 显示文件状态
+            const statusAlert = document.getElementById('fileStatusAlert');
+            if (data.file_exists) {
+                statusAlert.classList.remove('alert-danger');
+                statusAlert.classList.add('alert-success');
+                statusAlert.innerHTML = '<i class="bi bi-check-circle"></i> 文件状态正常，可以下载和使用';
+            } else {
+                statusAlert.classList.remove('alert-success');
+                statusAlert.classList.add('alert-danger');
+                statusAlert.innerHTML = '<i class="bi bi-exclamation-triangle"></i> 警告：物理文件已不存在，请检查文件路径';
+            }
+            statusAlert.classList.remove('d-none');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('fileInfoLoading').classList.add('d-none');
+            document.getElementById('fileInfoContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-circle"></i> 加载文件详情失败：${error.message}
+                </div>
+            `;
+            document.getElementById('fileInfoContent').classList.remove('d-none');
+        });
+}
+
+function deleteFile(fileId, fileName) {
+    var confirmMessage = '确定要删除文件 "' + fileName + '" 吗？\n\n⚠️ 注意：这将同时删除：\n• 数据库中的文件记录\n• 磁盘上的物理文件\n\n此操作不可恢复！';
+    
+    if (confirm(confirmMessage)) {
+        // 创建表单并提交
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/files/delete/' + fileId;
+        
+        // 添加删除物理文件的参数（默认为true）
+        var deletePhysicalInput = document.createElement('input');
+        deletePhysicalInput.type = 'hidden';
+        deletePhysicalInput.name = 'delete_physical';
+        deletePhysicalInput.value = 'true';
+        form.appendChild(deletePhysicalInput);
+        
+        // 添加CSRF令牌（如果需要）
+        var csrfToken = document.querySelector('meta[name=csrf-token]');
+        if (csrfToken) {
+            var csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrf_token';
+            csrfInput.value = csrfToken.getAttribute('content');
+            form.appendChild(csrfInput);
+        }
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// 自动提交搜索表单
+document.querySelector('input[name="search"]').addEventListener('input', function() {
+    clearTimeout(this.searchTimeout);
+    var form = this.form;
+    this.searchTimeout = setTimeout(function() {
+        form.submit();
+    }, 500);
+});
+</script>
+
+<style>
+.table th {
+    border-top: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #495057;
+}
+
+.table td {
+    vertical-align: middle;
+    border-color: #f8f9fa;
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.75rem;
+}
+
+.badge {
+    font-size: 0.7rem;
+}
+
+.card-header {
+    background: linear-gradient(90deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid #dee2e6;
+}
+
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .btn-group-sm .btn {
+        padding: 0.2rem 0.3rem;
+        font-size: 0.7rem;
+    }
+}
+
+/* 文件详情模态框样式 */
+.modal-body .card {
+    border: none;
+    box-shadow: 0 0 10px rgba(0,0,0,0.05);
+}
+
+.modal-body .card-header {
+    background: linear-gradient(90deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid #dee2e6;
+}
+
+.modal-body .card-header h6 {
+    color: #495057;
+    font-weight: 600;
+}
+
+.modal-body .small {
+    color: #6c757d;
+}
+
+.modal-body .fw-bold {
+    color: #212529;
+}
+
+.modal-body .alert {
+    margin-bottom: 0;
+}
+
+.modal-body .bi {
+    margin-right: 0.5rem;
+}
+</style>
+{% endblock %} 

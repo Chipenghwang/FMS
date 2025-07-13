@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh" class="h-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}文件管理系统{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- 自定义样式 -->
+    <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet">
+    
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-light d-flex flex-column h-100">
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{{ url_for('main.dashboard') }}">
+                <i class="bi bi-folder2-open"></i> 文件管理系统
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}" href="{{ url_for('main.dashboard') }}">
+                                <i class="bi bi-speedometer2"></i> 主页
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'files.list' %}active{% endif %}" href="{{ url_for('files.list') }}">
+                                <i class="bi bi-folder2"></i> 文件管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'files.upload' %}active{% endif %}" href="{{ url_for('files.upload') }}">
+                                <i class="bi bi-cloud-upload"></i> 上传文件
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <!-- 语言切换 -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-translate"></i> 语言
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('main.set_language', language='zh') }}">
+                                    🇨🇳 中文简体
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('main.set_language', language='en') }}">
+                                    🇺🇸 English
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    
+                    {% if current_user.is_authenticated %}
+                        <!-- 用户菜单 -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-person-circle"></i> {{ current_user.username }}
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('auth.logout') }}">
+                                        <i class="bi bi-box-arrow-right"></i> 退出登录
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('auth.login') }}">
+                                <i class="bi bi-box-arrow-in-right"></i> 登录
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('auth.register') }}">
+                                <i class="bi bi-person-plus"></i> 注册
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 消息提示 -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container mt-3">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {% if category == 'success' %}
+                            <i class="bi bi-check-circle"></i>
+                        {% elif category == 'error' %}
+                            <i class="bi bi-exclamation-triangle"></i>
+                        {% elif category == 'info' %}
+                            <i class="bi bi-info-circle"></i>
+                        {% endif %}
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- 主要内容区域 - 使用flex-grow-1确保占据剩余空间 -->
+    <main class="container my-4 flex-grow-1">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- 页脚 - 固定在底部 -->
+    <footer class="bg-light border-top py-4 mt-auto">
+        <div class="container text-center">
+            <div class="row align-items-center">
+                <div class="col-md-12">
+                    <p class="mb-1 text-muted fw-semibold">
+                        <i class="bi bi-c-circle"></i> 2024 文件管理系统. 保留所有权利.
+                    </p>
+                    <small class="text-muted">
+                        <i class="bi bi-code-slash"></i> 基于 Flask 构建的现代化文件管理解决方案
+                    </small>
+                </div>
+            </div>
+            <!-- 附加信息 -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="d-flex justify-content-center align-items-center gap-4 flex-wrap">
+                        <small class="text-muted">
+                            <i class="bi bi-shield-check"></i> 安全可靠
+                        </small>
+                        <small class="text-muted">
+                            <i class="bi bi-speedometer2"></i> 高性能
+                        </small>
+                        <small class="text-muted">
+                            <i class="bi bi-phone"></i> 响应式设计
+                        </small>
+                        <small class="text-muted">
+                            <i class="bi bi-cloud-arrow-up"></i> 云端存储
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Vue.js 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html> 

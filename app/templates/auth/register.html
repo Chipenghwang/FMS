@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}注册 - 文件管理系统{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow border-0">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <h2 class="fw-bold text-primary">注册账户</h2>
+                    <p class="text-muted">创建您的账户，开始使用文件管理系统</p>
+                </div>
+
+                <form method="POST" id="registerForm">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">用户名</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-person"></i>
+                            </span>
+                            <input type="text" class="form-control" id="username" name="username" 
+                                   required placeholder="请输入用户名" minlength="3" maxlength="20">
+                        </div>
+                        <div class="form-text">用户名长度为3-20个字符</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">邮箱地址</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-envelope"></i>
+                            </span>
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   required placeholder="请输入邮箱地址">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">密码</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-lock"></i>
+                            </span>
+                            <input type="password" class="form-control" id="password" name="password" 
+                                   required placeholder="请输入密码" minlength="6">
+                            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">密码长度至少6位</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label">确认密码</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-lock-fill"></i>
+                            </span>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" 
+                                   required placeholder="请再次输入密码">
+                            <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div id="passwordMatch" class="form-text"></div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary" id="registerBtn">
+                            <span class="spinner-border spinner-border-sm d-none" id="registerSpinner"></span>
+                            <i class="bi bi-person-plus"></i> 注册账户
+                        </button>
+                    </div>
+                </form>
+
+                <hr class="my-4">
+                
+                <div class="text-center">
+                    <p class="text-muted">已有账户？</p>
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-box-arrow-in-right"></i> 立即登录
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 密码显示/隐藏切换
+    function setupPasswordToggle(toggleId, fieldId) {
+        const toggleBtn = document.getElementById(toggleId);
+        const passwordField = document.getElementById(fieldId);
+        
+        toggleBtn.addEventListener('click', function() {
+            const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordField.setAttribute('type', type);
+            
+            const icon = this.querySelector('i');
+            icon.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+        });
+    }
+    
+    setupPasswordToggle('togglePassword', 'password');
+    setupPasswordToggle('toggleConfirmPassword', 'confirm_password');
+
+    // 密码匹配验证
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirm_password');
+    const passwordMatch = document.getElementById('passwordMatch');
+    const registerBtn = document.getElementById('registerBtn');
+
+    function checkPasswordMatch() {
+        if (confirmPassword.value === '') {
+            passwordMatch.textContent = '';
+            passwordMatch.className = 'form-text';
+            return;
+        }
+        
+        if (password.value === confirmPassword.value) {
+            passwordMatch.textContent = '✓ 密码匹配';
+            passwordMatch.className = 'form-text text-success';
+        } else {
+            passwordMatch.textContent = '✗ 密码不匹配';
+            passwordMatch.className = 'form-text text-danger';
+        }
+    }
+
+    password.addEventListener('input', checkPasswordMatch);
+    confirmPassword.addEventListener('input', checkPasswordMatch);
+
+    // 表单提交处理
+    const registerForm = document.getElementById('registerForm');
+    const registerSpinner = document.getElementById('registerSpinner');
+
+    registerForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // 检查密码是否匹配
+        if (password.value !== confirmPassword.value) {
+            showAlert('两次输入的密码不一致', 'danger');
+            return;
+        }
+        
+        // 显示加载状态
+        registerBtn.disabled = true;
+        registerSpinner.classList.remove('d-none');
+        
+        const formData = new FormData(this);
+        
+        fetch(this.action, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.redirect) {
+                showAlert('注册成功！正在跳转到登录页面...', 'success');
+                setTimeout(() => {
+                    window.location.href = data.redirect;
+                }, 1500);
+            } else if (data.error) {
+                showAlert(data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            // 如果JSON解析失败，说明是表单提交，直接提交
+            this.submit();
+        })
+        .finally(() => {
+            registerBtn.disabled = false;
+            registerSpinner.classList.add('d-none');
+        });
+    });
+
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        const container = document.querySelector('.container');
+        container.insertBefore(alertDiv, container.firstChild);
+        
+        // 自动滚动到顶部
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,541 @@
+{% extends "base.html" %}
+
+{% block title %}上传文件 - 文件管理系统{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-cloud-upload"></i> 文件上传 - 第三步：选择保存位置和文件
+                </h5>
+            </div>
+            <div class="card-body p-5">
+                <!-- 进度指示器 -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="progress mb-3" style="height: 8px;">
+                            <div class="progress-bar bg-primary" style="width: 100%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">1. 选择类型</small>
+                            <small class="text-muted">2. 填写属性</small>
+                            <small class="text-primary fw-bold">3. 选择位置和文件</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 文件保存位置选择 -->
+                <div class="mb-4">
+                    <h5 class="text-dark mb-3">
+                        <i class="bi bi-folder2-open text-primary"></i> 选择文件保存位置
+                    </h5>
+                    
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="form-group mb-3">
+                                <label for="saveLocation" class="form-label">保存目录：</label>
+                                <select class="form-select" id="saveLocation" name="save_location" onchange="handleLocationChange()">
+                                    <option value="">-- 选择保存位置 --</option>
+                                    <option value="D:\Documents">我的文档 (D:\Documents)</option>
+                                    <option value="D:\Downloads">下载文件夹 (D:\Downloads)</option>
+                                    <option value="D:\Desktop">桌面 (D:\Desktop)</option>
+                                    <option value="E:\Files">E盘文件夹 (E:\Files)</option>
+                                    <option value="custom">自定义位置...</option>
+                                </select>
+                            </div>
+                            
+                            <!-- 自定义路径输入 -->
+                            <div id="customPathDiv" class="form-group mb-3 d-none">
+                                <label for="customPath" class="form-label">自定义路径：</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-folder"></i></span>
+                                    <input type="text" class="form-control" id="customPath" name="custom_path" 
+                                           placeholder="例如: D:\MyFiles\Projects" 
+                                           onblur="validatePath()">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="testPath()" title="测试路径">
+                                        <i class="bi bi-check-circle"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">请输入完整的绝对路径，系统将创建不存在的目录</div>
+                                <div id="pathValidation" class="mt-2"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i>
+                                <strong>提示：</strong><br>
+                                • 选择现有目录可快速保存<br>
+                                • 自定义路径支持创建新目录<br>
+                                • 建议使用易访问的位置
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <div class="text-center mb-4">
+                    <h5 class="text-dark">
+                        {% if category == 'file' %}
+                            <i class="bi bi-file-earmark-text text-primary"></i> 选择文件进行上传
+                        {% elif category == 'image' %}
+                            <i class="bi bi-image text-success"></i> 选择图片进行上传
+                        {% elif category == 'video' %}
+                            <i class="bi bi-camera-video text-danger"></i> 选择视频进行上传
+                        {% endif %}
+                    </h5>
+                    <p class="text-muted">
+                        支持的文件格式：
+                        {% if category == 'file' %}
+                            <span class="text-primary">TXT, PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, ZIP, RAR, CSV</span>
+                        {% elif category == 'image' %}
+                            <span class="text-success">JPG, JPEG, PNG, GIF, BMP, WEBP, SVG, TIFF</span>
+                        {% elif category == 'video' %}
+                            <span class="text-danger">MP4, AVI, MOV, WMV, FLV, MKV, WEBM, 3GP, MP3, WAV</span>
+                        {% endif %}
+                    </p>
+                </div>
+
+                <!-- 文件上传区域 -->
+                <form id="uploadForm" action="{{ url_for('files.upload_process') }}" method="POST" enctype="multipart/form-data">
+                    <!-- 隐藏字段传递保存位置 -->
+                    <input type="hidden" id="finalSavePath" name="save_path" value="">
+                    
+                    <div id="dropZone" class="upload-drop-zone border-2 border-dashed rounded-3 p-5 text-center mb-4 category-{{ category }}">
+                        
+                        <div id="dropContent">
+                            <div class="mb-3">
+                                {% if category == 'file' %}
+                                    <i class="bi bi-file-earmark-arrow-up" style="font-size: 4rem; color: #0d6efd;"></i>
+                                {% elif category == 'image' %}
+                                    <i class="bi bi-image" style="font-size: 4rem; color: #198754;"></i>
+                                {% elif category == 'video' %}
+                                    <i class="bi bi-camera-video" style="font-size: 4rem; color: #dc3545;"></i>
+                                {% endif %}
+                            </div>
+                            <h5 class="mb-3">拖拽文件到此处或点击选择</h5>
+                            <p class="text-muted mb-3">文件大小限制：最大 100MB</p>
+                            <input type="file" id="fileInput" name="file" class="d-none" 
+                                   accept="{% if category == 'file' %}.txt,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.csv{% elif category == 'image' %}.jpg,.jpeg,.png,.gif,.bmp,.webp,.svg,.tiff{% elif category == 'video' %}.mp4,.avi,.mov,.wmv,.flv,.mkv,.webm,.3gp,.mp3,.wav{% endif %}" 
+                                   required>
+                            <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                                <i class="bi bi-folder2-open"></i> 选择文件
+                            </button>
+                        </div>
+
+                        <!-- 文件信息显示区域 -->
+                        <div id="fileInfo" class="d-none">
+                            <div class="row align-items-center">
+                                <div class="col-2">
+                                    <i id="fileIcon" class="bi bi-file-earmark" style="font-size: 3rem;"></i>
+                                </div>
+                                <div class="col-8">
+                                    <h6 id="fileName" class="mb-1"></h6>
+                                    <p id="fileSize" class="text-muted mb-1"></p>
+                                    <p id="finalPath" class="text-success mb-0 small"></p>
+                                </div>
+                                <div class="col-2">
+                                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearFile()">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 上传进度 -->
+                    <div id="uploadProgress" class="d-none mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted">上传进度</span>
+                            <span id="progressPercent" class="text-primary fw-bold">0%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div id="progressBar" class="progress-bar bg-primary" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('files.upload_step2', category=category) }}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-left"></i> 上一步
+                                </a>
+                                <button type="submit" id="uploadBtn" class="btn btn-success" disabled>
+                                    <i class="bi bi-cloud-upload"></i> 开始上传
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedFile = null;
+let selectedPath = '';
+const category = '{{ category }}';
+
+document.addEventListener('DOMContentLoaded', function() {
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadForm = document.getElementById('uploadForm');
+    const uploadBtn = document.getElementById('uploadBtn');
+    
+    // 设置拖拽区域的边框颜色
+    if (category === 'file') {
+        dropZone.style.borderColor = '#0d6efd';
+    } else if (category === 'image') {
+        dropZone.style.borderColor = '#198754';
+    } else if (category === 'video') {
+        dropZone.style.borderColor = '#dc3545';
+    }
+    
+    // 文件拖拽功能
+    dropZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.classList.add('dragover');
+    });
+    
+    dropZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+    });
+    
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFileSelect(files[0]);
+        }
+    });
+    
+    // 点击选择文件
+    dropZone.addEventListener('click', function() {
+        fileInput.click();
+    });
+    
+    // 文件选择事件
+    fileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            handleFileSelect(e.target.files[0]);
+        }
+    });
+    
+    // 表单提交
+    uploadForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (selectedFile && selectedPath) {
+            uploadFile();
+        } else {
+            if (!selectedPath) {
+                showAlert('请先选择文件保存位置', 'warning');
+            } else {
+                showAlert('请先选择文件', 'warning');
+            }
+        }
+    });
+});
+
+function handleLocationChange() {
+    const select = document.getElementById('saveLocation');
+    const customDiv = document.getElementById('customPathDiv');
+    const customPath = document.getElementById('customPath');
+    
+    if (select.value === 'custom') {
+        customDiv.classList.remove('d-none');
+        customPath.focus();
+        selectedPath = '';
+    } else if (select.value) {
+        customDiv.classList.add('d-none');
+        selectedPath = select.value;
+        updateFinalPath();
+    } else {
+        customDiv.classList.add('d-none');
+        selectedPath = '';
+    }
+    
+    updateUploadButton();
+}
+
+function validatePath() {
+    const pathInput = document.getElementById('customPath');
+    const validationDiv = document.getElementById('pathValidation');
+    const path = pathInput.value.trim();
+    
+    if (!path) {
+        selectedPath = '';
+        validationDiv.innerHTML = '';
+        updateUploadButton();
+        return;
+    }
+    
+    // 简单的路径验证
+    const pathRegex = /^[A-Za-z]:[\\/].*$/;
+    if (pathRegex.test(path)) {
+        selectedPath = path;
+        validationDiv.innerHTML = '<div class="text-success"><i class="bi bi-check-circle"></i> 路径格式正确</div>';
+        updateFinalPath();
+    } else {
+        selectedPath = '';
+        validationDiv.innerHTML = '<div class="text-danger"><i class="bi bi-x-circle"></i> 请输入有效的绝对路径（如 D:\\MyFiles）</div>';
+    }
+    
+    updateUploadButton();
+}
+
+function testPath() {
+    const path = document.getElementById('customPath').value.trim();
+    if (!path) {
+        showAlert('请先输入路径', 'warning');
+        return;
+    }
+    
+    // 这里可以发送AJAX请求测试路径是否可用
+    showAlert('路径格式验证通过，上传时将自动创建目录', 'info');
+}
+
+function updateFinalPath() {
+    if (selectedFile && selectedPath) {
+        const finalPathElement = document.getElementById('finalPath');
+        const fullPath = selectedPath.endsWith('\\') ? selectedPath + selectedFile.name : selectedPath + '\\' + selectedFile.name;
+        finalPathElement.textContent = '保存到: ' + fullPath;
+        
+        // 更新隐藏字段
+        document.getElementById('finalSavePath').value = selectedPath;
+    }
+}
+
+function updateUploadButton() {
+    const uploadBtn = document.getElementById('uploadBtn');
+    uploadBtn.disabled = !(selectedFile && selectedPath);
+}
+
+function handleFileSelect(file) {
+    // 文件大小检查 (100MB)
+    const maxSize = 100 * 1024 * 1024;
+    if (file.size > maxSize) {
+        showAlert('文件大小超过限制（最大100MB）', 'error');
+        return;
+    }
+    
+    // 文件类型检查
+    const allowedTypes = {
+        'file': ['txt', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar', 'csv'],
+        'image': ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'tiff'],
+        'video': ['mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv', 'webm', '3gp', 'mp3', 'wav']
+    };
+    
+    const fileExt = file.name.split('.').pop().toLowerCase();
+    if (!allowedTypes[category].includes(fileExt)) {
+        const typeNames = {
+            'file': '文档',
+            'image': '图片',
+            'video': '视频'
+        };
+        showAlert(`请选择有效的${typeNames[category]}文件`, 'error');
+        return;
+    }
+    
+    selectedFile = file;
+    
+    // 显示文件信息
+    document.getElementById('dropContent').classList.add('d-none');
+    document.getElementById('fileInfo').classList.remove('d-none');
+    
+    // 设置文件图标
+    const fileIcon = document.getElementById('fileIcon');
+    if (category === 'image') {
+        fileIcon.className = 'bi bi-image text-success';
+    } else if (category === 'video') {
+        fileIcon.className = 'bi bi-camera-video text-danger';
+    } else {
+        fileIcon.className = 'bi bi-file-earmark-text text-primary';
+    }
+    
+    // 设置文件信息
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = formatFileSize(file.size);
+    
+    updateFinalPath();
+    updateUploadButton();
+}
+
+function clearFile() {
+    selectedFile = null;
+    document.getElementById('fileInput').value = '';
+    document.getElementById('dropContent').classList.remove('d-none');
+    document.getElementById('fileInfo').classList.add('d-none');
+    document.getElementById('finalPath').textContent = '';
+    
+    // 隐藏进度条
+    document.getElementById('uploadProgress').classList.add('d-none');
+    
+    updateUploadButton();
+}
+
+function uploadFile() {
+    const formData = new FormData(document.getElementById('uploadForm'));
+    const progressBar = document.getElementById('progressBar');
+    const progressPercent = document.getElementById('progressPercent');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const uploadBtn = document.getElementById('uploadBtn');
+    
+    // 显示进度条
+    uploadProgress.classList.remove('d-none');
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 上传中...';
+    
+    // 使用XMLHttpRequest以支持进度显示
+    const xhr = new XMLHttpRequest();
+    
+    xhr.upload.addEventListener('progress', function(e) {
+        if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 100);
+            progressBar.style.width = percentComplete + '%';
+            progressPercent.textContent = percentComplete + '%';
+        }
+    });
+    
+    xhr.addEventListener('load', function() {
+        if (xhr.status === 200) {
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (response.redirect) {
+                    showAlert(response.message || '文件保存成功！', 'success');
+                    setTimeout(() => {
+                        window.location.href = response.redirect;
+                    }, 1500);
+                } else {
+                    showAlert('文件保存成功！', 'success');
+                    setTimeout(() => {
+                        window.location.href = '{{ url_for("files.list") }}';
+                    }, 1500);
+                }
+            } catch (e) {
+                // 如果不是JSON响应，可能是重定向
+                window.location.href = '{{ url_for("files.list") }}';
+            }
+        } else {
+            try {
+                const response = JSON.parse(xhr.responseText);
+                showAlert(response.error || '保存失败', 'error');
+            } catch (e) {
+                showAlert('保存失败，请重试', 'error');
+            }
+            
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = '<i class="bi bi-cloud-upload"></i> 开始上传';
+        }
+    });
+    
+    xhr.addEventListener('error', function() {
+        showAlert('网络错误，保存失败', 'error');
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = '<i class="bi bi-cloud-upload"></i> 开始上传';
+    });
+    
+    xhr.open('POST', document.getElementById('uploadForm').action);
+    xhr.send(formData);
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+
+<style>
+.upload-drop-zone {
+    transition: all 0.3s ease;
+    cursor: pointer;
+    min-height: 250px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.upload-drop-zone:hover {
+    background: rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
+}
+
+.upload-drop-zone.dragover {
+    background: rgba(13, 110, 253, 0.1);
+    border-color: #0d6efd !important;
+    transform: scale(1.02);
+}
+
+.category-file:hover {
+    border-color: #0d6efd !important;
+    background: rgba(13, 110, 253, 0.05);
+}
+
+.category-image:hover {
+    border-color: #198754 !important;
+    background: rgba(25, 135, 84, 0.05);
+}
+
+.category-video:hover {
+    border-color: #dc3545 !important;
+    background: rgba(220, 53, 69, 0.05);
+}
+
+.progress {
+    border-radius: 10px;
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    border-radius: 10px;
+    transition: width 0.3s ease;
+}
+
+#fileInfo {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.form-select:focus, .form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+</style>
+{% endblock %} 

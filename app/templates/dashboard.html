@@ -1,0 +1,524 @@
+{% extends "base.html" %}
+
+{% block title %}文件管理系统中心 - 文件管理系统{% endblock %}
+
+{% block head %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- 天气图标 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/weather-icons/2.0.12/css/weather-icons.min.css">
+{% endblock %}
+
+{% block content %}
+<div id="dashboard" class="fade-in">
+    <!-- 页面标题 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="fw-bold mb-0">
+                <i class="bi bi-speedometer2"></i> 文件管理系统中心
+            </h1>
+            <p class="text-muted mb-0">欢迎回来，{{ current_user.username }}！</p>
+        </div>
+        <div class="text-end">
+            <div class="h5 mb-0" id="currentTime"></div>
+            <small class="text-muted" id="currentDate"></small>
+        </div>
+    </div>
+
+    <!-- 第一行：天气和快速统计 -->
+    <div class="row g-4 mb-4">
+        <!-- 天气卡片 -->
+        <div class="col-lg-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-cloud-sun"></i> 今日天气
+                            <small class="badge bg-light text-dark ms-2" id="weatherSource">快速</small>
+                        </h6>
+                        <button class="btn btn-sm btn-outline-primary" onclick="refreshWeather()" id="weatherRefreshBtn">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                    
+                    <div id="weatherInfo" class="text-center">
+                        <!-- 预设默认天气内容，避免加载状态 -->
+                        <div class="weather-display">
+                            <div class="temperature-main">
+                                <span class="display-4 fw-bold text-primary">22°</span>
+                                <small class="text-muted">C</small>
+                            </div>
+                            <div class="weather-details mt-2">
+                                <p class="mb-1"><strong>晴天</strong></p>
+                                <small class="text-muted">体感温度 24°C</small>
+                            </div>
+                            <div class="weather-extra mt-3">
+                                <div class="row text-center">
+                                    <div class="col-6">
+                                        <i class="bi bi-droplet text-info"></i>
+                                        <br><small>60%</small>
+                                    </div>
+                                    <div class="col-6">
+                                        <i class="bi bi-wind text-secondary"></i>
+                                        <br><small>8 km/h</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 文件统计卡片 -->
+        <div class="col-lg-8">
+            <div class="row g-3 h-100">
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100 bg-primary text-white">
+                        <div class="card-body stats-card">
+                            <i class="bi bi-files"></i>
+                            <h3 class="mb-0" id="totalFiles">-</h3>
+                            <small>总文件数</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100 bg-success text-white">
+                        <div class="card-body stats-card">
+                            <i class="bi bi-hdd"></i>
+                            <h3 class="mb-0" id="totalSize">-</h3>
+                            <small>总存储量</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100 bg-info text-white">
+                        <div class="card-body stats-card">
+                            <i class="bi bi-calendar-week"></i>
+                            <h3 class="mb-0" id="weeklyUploads">-</h3>
+                            <small>本周上传</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第二行：数据可视化图表 -->
+    <div class="row g-4 mb-4">
+        <!-- 文件类型分布 -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-pie-chart"></i> 文件类型分布
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="fileTypesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 最近7天上传趋势 -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-graph-up"></i> 最近7天上传趋势
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="uploadsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第三行：快速操作 -->
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-lightning"></i> 快速操作
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <a href="{{ url_for('files.upload') }}" class="btn btn-primary w-100">
+                                <i class="bi bi-cloud-upload"></i><br>
+                                <small>上传文件</small>
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('files.list') }}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-folder2-open"></i><br>
+                                <small>浏览文件</small>
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('files.list') }}?search=" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-search"></i><br>
+                                <small>搜索文件</small>
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-info w-100" onclick="refreshDashboard()">
+                                <i class="bi bi-arrow-clockwise"></i><br>
+                                <small>刷新数据</small>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let weatherUpdateInterval;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化仪表板
+    initDashboard();
+    
+    // 更新时间
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+    
+    // 设置天气定期更新（利用缓存）
+    weatherUpdateInterval = setInterval(loadWeatherCached, 30000); // 每30秒检查一次缓存
+});
+
+function initDashboard() {
+    loadFileStats();
+    loadWeatherCached(); // 使用缓存版本的天气加载
+}
+
+function updateDateTime() {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('zh-CN', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+    const dateString = now.toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long'
+    });
+    
+    document.getElementById('currentTime').textContent = timeString;
+    document.getElementById('currentDate').textContent = dateString;
+}
+
+function loadFileStats() {
+    fetch('/api/file_stats')
+        .then(response => response.json())
+        .then(data => {
+            // 更新统计卡片
+            document.getElementById('totalFiles').textContent = data.total_files;
+            document.getElementById('totalSize').textContent = data.total_size;
+            
+            // 计算本周上传数
+            const weeklyCount = data.daily_uploads.reduce((sum, day) => sum + day.count, 0);
+            document.getElementById('weeklyUploads').textContent = weeklyCount;
+            
+            // 创建图表
+            createFileTypesChart(data.file_types);
+            createUploadsChart(data.daily_uploads);
+        })
+        .catch(error => {
+            console.error('Error loading file stats:', error);
+            showAlert('加载统计数据失败', 'danger');
+        });
+}
+
+function loadWeatherCached() {
+    // 使用优化后的天气API（快速响应 + 后台更新）
+    fetch('/api/weather')
+        .then(response => response.json())
+        .then(data => {
+            updateWeatherDisplay(data);
+        })
+        .catch(error => {
+            console.error('Error loading weather:', error);
+            // 保持当前显示不变，不显示错误
+        });
+}
+
+function loadWeatherDirect() {
+    // 强制刷新天气数据（用于手动刷新）
+    const refreshBtn = document.getElementById('weatherRefreshBtn');
+    refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i>';
+    refreshBtn.disabled = true;
+    
+    fetch('/api/weather/refresh')
+        .then(response => response.json())
+        .then(data => {
+            updateWeatherDisplay(data);
+        })
+        .catch(error => {
+            console.error('Error refreshing weather:', error);
+            showAlert('天气更新失败', 'warning');
+        })
+        .finally(() => {
+            refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
+            refreshBtn.disabled = false;
+        });
+}
+
+function updateWeatherDisplay(data) {
+    const weatherInfo = document.getElementById('weatherInfo');
+    const weatherSource = document.getElementById('weatherSource');
+    
+    if (data.success) {
+        weatherInfo.innerHTML = `
+            <div class="weather-display">
+                <div class="temperature-main">
+                    <span class="display-4 fw-bold text-primary">${data.temperature}°</span>
+                    <small class="text-muted">C</small>
+                </div>
+                <div class="weather-details mt-2">
+                    <p class="mb-1"><strong>${data.description}</strong></p>
+                    <small class="text-muted">体感温度 ${data.feels_like}°C</small>
+                </div>
+                <div class="weather-extra mt-3">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <i class="bi bi-droplet text-info"></i>
+                            <br><small>${data.humidity}%</small>
+                        </div>
+                        <div class="col-6">
+                            <i class="bi bi-wind text-secondary"></i>
+                            <br><small>${data.wind_speed} km/h</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // 更新数据源标识
+        if (data.source === 'api') {
+            weatherSource.textContent = '实时';
+            weatherSource.className = 'badge bg-success text-white ms-2';
+        } else {
+            weatherSource.textContent = '快速';
+            weatherSource.className = 'badge bg-light text-dark ms-2';
+        }
+    } else {
+        // 保持默认显示，只更新源标识
+        weatherSource.textContent = '离线';
+        weatherSource.className = 'badge bg-warning text-dark ms-2';
+    }
+}
+
+function createFileTypesChart(fileTypes) {
+    const ctx = document.getElementById('fileTypesChart').getContext('2d');
+    
+    const colors = [
+        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+        '#9966FF', '#FF9F40', '#C9CBCF', '#4BC0C0'
+    ];
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: fileTypes.map(ft => ft.type.toUpperCase() || '未知'),
+            datasets: [{
+                data: fileTypes.map(ft => ft.count),
+                backgroundColor: colors.slice(0, fileTypes.length),
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function createUploadsChart(dailyUploads) {
+    const ctx = document.getElementById('uploadsChart').getContext('2d');
+    
+    // 生成最近7天的日期
+    const dates = [];
+    const counts = [];
+    
+    for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        dates.push(date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }));
+        
+        const dayData = dailyUploads.find(du => du.date === dateStr);
+        counts.push(dayData ? dayData.count : 0);
+    }
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: [{
+                label: '文件上传数量',
+                data: counts,
+                borderColor: '#36A2EB',
+                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+}
+
+function refreshWeather() {
+    loadWeatherDirect(); // 使用强制刷新
+}
+
+function refreshDashboard() {
+    showAlert('正在刷新数据...', 'info');
+    setTimeout(() => {
+        location.reload();
+    }, 1000);
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // 自动移除提示
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 3000);
+}
+</script>
+
+<style>
+.weather-display {
+    padding: 1rem 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.temperature-main {
+    line-height: 1;
+}
+
+.card {
+    transition: transform 0.2s ease-in-out;
+    height: 100%;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.weather-extra .col-6 {
+    border-right: 1px solid #eee;
+}
+
+.weather-extra .col-6:last-child {
+    border-right: none;
+}
+
+/* 统一卡片高度 */
+.card-body {
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 统计卡片样式 */
+.stats-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.stats-card i {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+.stats-card h3 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+/* 图表容器样式 */
+.chart-container {
+    height: 300px;
+    position: relative;
+}
+
+/* 旋转动画 */
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+    .display-4 {
+        font-size: 2.5rem;
+    }
+    
+    .card-body {
+        min-height: 180px;
+    }
+    
+    .chart-container {
+        height: 250px;
+    }
+}
+</style>
+{% endblock %} 

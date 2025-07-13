@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block title %}上传文件 - 文件管理系统{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- 页面标题 -->
+        <div class="text-center mb-4">
+            <h2 class="fw-bold">
+                <i class="bi bi-cloud-upload"></i> 上传文件
+            </h2>
+            <p class="text-muted">选择文件并上传到您的个人空间</p>
+        </div>
+
+        <!-- 上传表单 -->
+        <div class="card shadow border-0">
+            <div class="card-body p-4">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <!-- 文件选择区域 -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">选择文件</label>
+                        <div class="upload-area border-2 border-dashed rounded-3 p-5 text-center" 
+                             id="uploadArea">
+                            <div class="upload-content">
+                                <i class="bi bi-cloud-arrow-up" style="font-size: 3rem; color: #0d6efd;"></i>
+                                <h5 class="mt-3 mb-2">拖拽文件到此处或点击选择</h5>
+                                <p class="text-muted mb-3">
+                                    支持: TXT, PDF, PNG, JPG, JPEG, GIF, DOC, DOCX, XLS, XLSX, PPT, PPTX, ZIP, RAR
+                                </p>
+                                <p class="text-muted small mb-0">最大文件大小: 16MB</p>
+                            </div>
+                            <input type="file" id="fileInput" name="file" class="d-none" 
+                                   accept=".txt,.pdf,.png,.jpg,.jpeg,.gif,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar">
+                        </div>
+                    </div>
+
+                    <!-- 选中的文件信息 -->
+                    <div id="fileInfo" class="d-none mb-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <i class="bi bi-file-earmark"></i> 选中的文件
+                                </h6>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="fw-medium" id="fileName"></div>
+                                        <small class="text-muted" id="fileSize"></small>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-danger btn-sm" id="removeFile">
+                                        <i class="bi bi-x-circle"></i> 移除
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 文件描述 -->
+                    <div class="mb-4">
+                        <label for="description" class="form-label">文件描述 <span class="text-muted">(可选)</span></label>
+                        <textarea class="form-control" id="description" name="description" 
+                                  rows="3" placeholder="请输入文件描述或备注信息..."></textarea>
+                    </div>
+
+                    <!-- 上传进度 -->
+                    <div id="uploadProgress" class="d-none mb-4">
+                        <label class="form-label">上传进度</label>
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 id="progressBar" role="progressbar" style="width: 0%">
+                                <span id="progressText">0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('files.list') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> 返回文件列表
+                        </a>
+                        <button type="submit" class="btn btn-primary" id="uploadBtn" disabled>
+                            <span class="spinner-border spinner-border-sm d-none me-2" id="uploadSpinner"></span>
+                            <i class="bi bi-cloud-upload"></i> 开始上传
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 上传提示 -->
+        <div class="card border-0 bg-light mt-4">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-info-circle text-info"></i> 上传提示
+                </h6>
+                <ul class="list-unstyled mb-0 small text-muted">
+                    <li><i class="bi bi-check text-success me-2"></i>支持多种常用文件格式</li>
+                    <li><i class="bi bi-check text-success me-2"></i>文件大小不超过 16MB</li>
+                    <li><i class="bi bi-check text-success me-2"></i>上传后的文件仅您本人可见</li>
+                    <li><i class="bi bi-check text-success me-2"></i>支持随时下载或删除文件</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const removeFile = document.getElementById('removeFile');
+    const uploadForm = document.getElementById('uploadForm');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const uploadSpinner = document.getElementById('uploadSpinner');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+
+    let selectedFile = null;
+
+    // 点击上传区域选择文件
+    uploadArea.addEventListener('click', function() {
+        fileInput.click();
+    });
+
+    // 文件选择处理
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            handleFileSelect(file);
+        }
+    });
+
+    // 拖拽处理
+    uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadArea.classList.add('border-primary', 'bg-light');
+    });
+
+    uploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('border-primary', 'bg-light');
+    });
+
+    uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('border-primary', 'bg-light');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFileSelect(files[0]);
+        }
+    });
+
+    // 处理文件选择
+    function handleFileSelect(file) {
+        // 检查文件大小
+        const maxSize = 16 * 1024 * 1024; // 16MB
+        if (file.size > maxSize) {
+            showAlert('文件大小不能超过 16MB', 'danger');
+            return;
+        }
+
+        // 检查文件类型
+        const allowedTypes = [
+            'text/plain', 'application/pdf',
+            'image/png', 'image/jpeg', 'image/gif',
+            'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'application/zip', 'application/x-rar-compressed'
+        ];
+
+        const fileExt = file.name.split('.').pop().toLowerCase();
+        const allowedExts = ['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar'];
+        
+        if (!allowedExts.includes(fileExt)) {
+            showAlert('不支持的文件类型', 'danger');
+            return;
+        }
+
+        selectedFile = file;
+        
+        // 显示文件信息
+        fileName.textContent = file.name;
+        fileSize.textContent = formatFileSize(file.size);
+        fileInfo.classList.remove('d-none');
+        uploadBtn.disabled = false;
+
+        // 更新上传区域样式
+        uploadArea.classList.add('border-success');
+        uploadArea.querySelector('.upload-content').innerHTML = `
+            <i class="bi bi-check-circle text-success" style="font-size: 3rem;"></i>
+            <h5 class="mt-3 mb-2 text-success">文件已选择</h5>
+            <p class="text-muted mb-0">点击"开始上传"或重新选择文件</p>
+        `;
+    }
+
+    // 移除文件
+    removeFile.addEventListener('click', function() {
+        selectedFile = null;
+        fileInput.value = '';
+        fileInfo.classList.add('d-none');
+        uploadBtn.disabled = true;
+        uploadArea.classList.remove('border-success');
+        
+        // 恢复上传区域
+        uploadArea.querySelector('.upload-content').innerHTML = `
+            <i class="bi bi-cloud-arrow-up" style="font-size: 3rem; color: #0d6efd;"></i>
+            <h5 class="mt-3 mb-2">拖拽文件到此处或点击选择</h5>
+            <p class="text-muted mb-3">
+                支持: TXT, PDF, PNG, JPG, JPEG, GIF, DOC, DOCX, XLS, XLSX, PPT, PPTX, ZIP, RAR
+            </p>
+            <p class="text-muted small mb-0">最大文件大小: 16MB</p>
+        `;
+    });
+
+    // 表单提交
+    uploadForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (!selectedFile) {
+            showAlert('请先选择文件', 'warning');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('description', document.getElementById('description').value);
+
+        // 显示上传状态
+        uploadBtn.disabled = true;
+        uploadSpinner.classList.remove('d-none');
+        uploadProgress.classList.remove('d-none');
+
+        // 使用 XMLHttpRequest 以支持进度跟踪
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percentComplete = (e.loaded / e.total) * 100;
+                progressBar.style.width = percentComplete + '%';
+                progressText.textContent = Math.round(percentComplete) + '%';
+            }
+        };
+
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.redirect) {
+                        showAlert('文件上传成功！正在跳转...', 'success');
+                        setTimeout(() => {
+                            window.location.href = response.redirect;
+                        }, 1500);
+                    } else if (response.error) {
+                        showAlert(response.error, 'danger');
+                        resetUploadState();
+                    }
+                } catch (e) {
+                    // 如果不是JSON响应，可能是重定向
+                    showAlert('文件上传成功！', 'success');
+                    setTimeout(() => {
+                        window.location.href = "{{ url_for('files.list') }}";
+                    }, 1500);
+                }
+            } else {
+                showAlert('上传失败，请重试', 'danger');
+                resetUploadState();
+            }
+        };
+
+        xhr.onerror = function() {
+            showAlert('上传失败，请检查网络连接', 'danger');
+            resetUploadState();
+        };
+
+        xhr.open('POST', '{{ url_for("files.upload") }}');
+        xhr.send(formData);
+    });
+
+    function resetUploadState() {
+        uploadBtn.disabled = false;
+        uploadSpinner.classList.add('d-none');
+        uploadProgress.classList.add('d-none');
+        progressBar.style.width = '0%';
+        progressText.textContent = '0%';
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'exclamation-triangle'}"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        const container = document.querySelector('.container');
+        container.insertBefore(alertDiv, container.firstChild);
+        
+        // 自动滚动到顶部
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+});
+</script>
+
+<style>
+.upload-area {
+    border-color: #dee2e6 !important;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.upload-area:hover {
+    border-color: #0d6efd !important;
+    background-color: #f8f9fa !important;
+}
+
+.upload-area.border-primary {
+    border-color: #0d6efd !important;
+}
+
+.upload-area.border-success {
+    border-color: #198754 !important;
+}
+</style>
+{% endblock %} 

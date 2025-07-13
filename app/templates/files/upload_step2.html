@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}填写文件属性 - 文件管理系统{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-pencil-square"></i> 文件上传 - 第二步：填写文件属性
+                </h5>
+            </div>
+            <div class="card-body p-5">
+                <!-- 进度指示器 -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="progress mb-3" style="height: 8px;">
+                            <div class="progress-bar bg-primary" style="width: 66.66%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">1. 选择类型</small>
+                            <small class="text-primary fw-bold">2. 填写属性</small>
+                            <small class="text-muted">3. 上传文件</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mb-4">
+                    <h4 class="text-dark">
+                        {% if category == 'file' %}
+                            <i class="bi bi-file-earmark-text text-primary"></i> 文件属性设置
+                        {% elif category == 'image' %}
+                            <i class="bi bi-image text-success"></i> 图片属性设置
+                        {% elif category == 'video' %}
+                            <i class="bi bi-camera-video text-danger"></i> 视频属性设置
+                        {% endif %}
+                    </h4>
+                    <p class="text-muted">请填写必要的属性信息，带<span class="text-danger">*</span>的字段为必填项</p>
+                </div>
+
+                <!-- 属性表单 -->
+                <form action="{{ url_for('files.upload_step3') }}" method="POST" id="attributeForm">
+                    <input type="hidden" name="category" value="{{ category }}">
+                    
+                    <!-- 通用必填字段 -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2">
+                                <i class="bi bi-info-circle"></i> 基本信息（必填）
+                            </h6>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="project_number" class="form-label">
+                                项目号 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="project_number" name="project_number" 
+                                   placeholder="例如：PRJ-2024-001" required>
+                            <div class="form-text">项目的唯一标识号</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="device_name" class="form-label">
+                                设备名称 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="device_name" name="device_name" 
+                                   placeholder="例如：主控制器" required>
+                            <div class="form-text">相关设备或系统名称</div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="content_language" class="form-label">
+                                语言 <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="content_language" name="content_language" required>
+                                <option value="">请选择语言</option>
+                                {% for lang_code, lang_name in form_data.languages %}
+                                    <option value="{{ lang_code }}">{{ lang_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">内容的主要语言</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="security_level" class="form-label">
+                                保密等级 <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="security_level" name="security_level" required>
+                                <option value="">请选择保密等级</option>
+                                {% for level_code, level_name in form_data.security_levels %}
+                                    <option value="{{ level_code }}">{{ level_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">文件的安全级别</div>
+                        </div>
+                    </div>
+
+                    <!-- 图片和视频专用字段 -->
+                    {% if category in ['image', 'video'] %}
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-success border-bottom pb-2">
+                                <i class="bi bi-gear"></i> 产品信息（必填）
+                            </h6>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="product_type" class="form-label">
+                                产品类型 <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="product_type" name="product_type" required>
+                                <option value="">请选择产品类型</option>
+                                {% for type_code, type_name in form_data.product_types %}
+                                    <option value="{{ type_code }}">{{ type_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">相关产品的类别</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="product_material" class="form-label">
+                                产品物料 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="product_material" name="product_material" 
+                                   placeholder="例如：铝合金外壳" required>
+                            <div class="form-text">产品的主要材料或物料信息</div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- 图片专用字段 -->
+                    {% if category == 'image' %}
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-info border-bottom pb-2">
+                                <i class="bi bi-image"></i> 图片专用信息（必填）
+                            </h6>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="image_quality" class="form-label">
+                                图片质量 <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="image_quality" name="image_quality" required>
+                                <option value="">请选择图片质量</option>
+                                {% for quality_code, quality_name in form_data.quality_options %}
+                                    <option value="{{ quality_code }}">{{ quality_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">图片的质量等级</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="image_number" class="form-label">
+                                图片编号 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="image_number" name="image_number" 
+                                   placeholder="例如：IMG-001" required>
+                            <div class="form-text">图片的唯一编号</div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- 视频专用字段 -->
+                    {% if category == 'video' %}
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-warning border-bottom pb-2">
+                                <i class="bi bi-camera-video"></i> 视频专用信息（必填）
+                            </h6>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="video_quality" class="form-label">
+                                视频质量 <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="video_quality" name="video_quality" required>
+                                <option value="">请选择视频质量</option>
+                                {% for quality_code, quality_name in form_data.quality_options %}
+                                    <option value="{{ quality_code }}">{{ quality_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">视频的质量等级</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="video_number" class="form-label">
+                                视频编号 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="video_number" name="video_number" 
+                                   placeholder="例如：VID-001" required>
+                            <div class="form-text">视频的唯一编号</div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- 备注字段 -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-secondary border-bottom pb-2">
+                                <i class="bi bi-chat-dots"></i> 附加信息（可选）
+                            </h6>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <label for="remarks" class="form-label">备注</label>
+                            <textarea class="form-control" id="remarks" name="remarks" rows="3" 
+                                      placeholder="请输入相关说明或备注信息..."></textarea>
+                            <div class="form-text">可以添加任何相关的说明信息</div>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('files.upload') }}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-left"></i> 上一步
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    下一步：选择文件 <i class="bi bi-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 表单验证
+    const form = document.getElementById('attributeForm');
+    
+    form.addEventListener('submit', function(e) {
+        const requiredFields = form.querySelectorAll('[required]');
+        let isValid = true;
+        
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+        
+        if (!isValid) {
+            e.preventDefault();
+            showAlert('请填写所有必填字段', 'warning');
+        }
+    });
+    
+    // 实时验证
+    const inputs = form.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        input.addEventListener('blur', function() {
+            if (this.hasAttribute('required') && !this.value.trim()) {
+                this.classList.add('is-invalid');
+            } else {
+                this.classList.remove('is-invalid');
+            }
+        });
+    });
+});
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+
+<style>
+.form-control:focus, .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.form-control.is-invalid {
+    border-color: #dc3545;
+    background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23dc3545' viewBox='0 0 12 12'><circle cx='6' cy='6' r='4.5'/><path d='m5.25 5.25 1.5 1.5m0-1.5-1.5 1.5'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+.progress {
+    border-radius: 10px;
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    border-radius: 10px;
+}
+
+.border-bottom {
+    border-color: #dee2e6 !important;
+}
+
+h6 {
+    margin-bottom: 1rem;
+}
+
+.form-text {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+</style>
+{% endblock %} 

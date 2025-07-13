@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}简单上传 - 文件管理系统{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-cloud-upload"></i> 简单文件上传
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <p class="text-muted">快速上传文件，系统将自动识别文件类型</p>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>保存位置：</strong> 文件将保存到您的下载文件夹
+                    </div>
+                </div>
+
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">选择文件</label>
+                        <input type="file" class="form-control" id="file" name="file" required>
+                        <div class="form-text">支持的文件类型：文档、图片、视频等</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">描述（可选）</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" 
+                                  placeholder="请输入文件描述..."></textarea>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-cloud-upload"></i> 保存文件
+                        </button>
+                        <a href="{{ url_for('files.list') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> 返回文件列表
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="text-center mt-3">
+            <small class="text-muted">
+                需要指定保存位置？
+                <a href="{{ url_for('files.upload') }}" class="text-decoration-none">使用高级上传</a>
+            </small>
+        </div>
+    </div>
+</div>
+{% endblock %} 
